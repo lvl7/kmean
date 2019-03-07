@@ -1,3 +1,5 @@
+from functools import reduce
+
 import pygame
 
 
@@ -60,3 +62,10 @@ class Centroid(Point):
     def move(self):
         if self._points:
             self.coords = self.move_function(self._points)
+
+    def calculate_error(self, distance_function):
+        if not self._points:
+            return 0
+        return reduce(lambda error_sum, point: error_sum + distance_function(self, point),
+                      self._points,
+                      0)
