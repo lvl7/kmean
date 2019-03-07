@@ -4,6 +4,7 @@ from itertools import permutations
 import pygame
 import pygame.freetype
 
+from elbow import MeanVisualizer
 from src import coords_generators, averagers, distance
 from src.points import Points, Centroid, Point
 
@@ -52,6 +53,10 @@ def handle_events(world, events):
                     world.iterate()
                 elif ukey == 'l':
                     world.toggle_lines()
+                elif ukey == 'x':
+                    world.remove_centroids()
+                elif ukey == 'e':
+                    world.show_errors()
                 elif event.key == pygame.K_ESCAPE:
                     world.cancel()
         elif event.type == EVENT_ITERATE:
@@ -71,6 +76,8 @@ class World:
         self.distance_function = distance_function
         self.centroid_move_function = centorid_move_function
         self.points_random_function = points_random_function
+
+        self.error_visualiser = MeanVisualizer(self.centroids)
 
         self.color_picker = color_generator()
         self.show_lines = False
@@ -103,6 +110,16 @@ class World:
         self.points = Points(color=UNASSIGNED_POINTS_COLOR,
                              coords_generator_function=self.points_random_function)
         self.centroids = []
+        self.error_visualiser.clean_errors()
+        self.error_visualiser.clusters = self.centroids
+
+    def remove_centroids(self):
+        self.centroids = []
+        for point in self.points.points:
+            point.color = UNASSIGNED_POINTS_COLOR
+
+        self.error_visualiser.clean_errors()
+        self.error_visualiser.clusters = self.centroids
 
     def cancel(self):
         self.number_modifier = None
@@ -114,6 +131,8 @@ class World:
 
         if self.number_modifier:
             pygame.time.set_timer(EVENT_ITERATE, self.number_modifier)
+
+        self.show_errors()
 
     def siblings(self):
         if not self.centroids:
@@ -135,12 +154,18 @@ class World:
 
             closest_centroid.add_point(point)
 
+        for empty in [centroid for centroid in self.centroids if not centroid._points]:
+            self.centroids.remove(empty)
+
     def move_centroids(self):
         for centroid in self.centroids:
             centroid.move()
 
     def toggle_lines(self):
         self.show_lines = not self.show_lines
+
+    def show_errors(self):
+        self.error_visualiser.show_means(self.distance_function)
 
     def draw(self, screen, font):
         for point in self.points.points:
